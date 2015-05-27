@@ -1,24 +1,57 @@
 ﻿Imports AnythingTools.Servers
 Imports System.IO
 Imports System.Text
+Imports System.IO.Compression
+Imports System.Timers
 
 Module Module1
     Dim money As New Dictionary(Of String, Integer)
     Dim bank As New Dictionary(Of String, Long)
+    Dim config As New Dictionary(Of String, String)
     Dim players As New List(Of String)
+    Dim timer As New Timer
     Sub Main()
         Console.WriteLine("Global Data Sync Server for PocketMine-MP")
-        Console.WriteLine("Loading money.xml")
-        If File.Exists("money.xml") Then
+        Console.WriteLine("Loading money.dat")
+        If File.Exists("money.dat") Then
             Dim xd As XDocument
-            Using sr As New StreamReader(New FileStream("money.xml", FileMode.Open), Encoding.UTF32)
+            Using sr As New StreamReader(New GZipStream(New FileStream("money.dat", FileMode.Open), CompressionMode.Decompress), Encoding.UTF32)
                 xd = XDocument.Load(sr)
-
             End Using
-        Else
-
+            For Each i In xd.<Money>.<Player>
+                money(i.@player) = Integer.Parse(i.@value)
+            Next
         End If
+        Console.WriteLine("Loading bank.dat")
+        If File.Exists("bank.dat") Then
+            Dim xd As XDocument
+            Using sr As New StreamReader(New GZipStream(New FileStream("bank.dat", FileMode.Open), CompressionMode.Decompress), Encoding.UTF32)
+                xd = XDocument.Load(sr)
+            End Using
+            For Each i In xd.<Bank>.<Player>
+                bank(i.@player) = Long.Parse(i.@value)
+            Next
+        End If
+        Console.WriteLine("Loading config.xml")
+        If File.Exists("config.xml") Then
+            Dim xd As XDocument
+            Using sr As New StreamReader(New FileStream("config.xml", FileMode.Open), Encoding.UTF8)
+                xd = XDocument.Load(sr)
+            End Using
+            For Each i In xd.<Config>.<Entry>
+                config(i.@player) = i.@name
+            Next
+        End If
+        Console.WriteLine("Starting server...")
+        Dim server As New PluginServiceServer
+        server.Ports.Clear()
+        server.Ports.Add(20200)
+        server.StartServer()
+        Console.WriteLine("Done! You can start PocketMine-MP!")
+        While True
+            Dim command = Console.ReadLine
 
+        End While
     End Sub
     Class PluginServiceServer
         Inherits HttpServer
@@ -28,6 +61,8 @@ Module Module1
             Dim process As String = e.Request.RawUrl.Split("&").First.Split("/\").First.ToLower
             Dim player As String = query("player").ToLower 'same as PocketMine-MP's standard
             Select Case process
+                Case "ping"
+                    writer.WriteLine("RETURN_PONG")
                 Case "money" 'Economy & PocketMoney
                     SyncLock money
                         Select Case query("mode")
