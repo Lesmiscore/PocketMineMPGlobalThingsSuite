@@ -3,11 +3,13 @@ Imports System.IO
 Imports System.Text
 Imports System.IO.Compression
 Imports System.Timers
+Imports AnythingTools
 
 Module Module1
     Dim money As New Dictionary(Of String, Integer)
     Dim bank As New Dictionary(Of String, Long)
     Dim config As New Dictionary(Of String, String)
+    Dim commands As New Dictionary(Of String, Action(Of String()))
     Dim players As New List(Of String)
     Dim timer As New Timer
     Sub Main()
@@ -39,8 +41,11 @@ Module Module1
                 xd = XDocument.Load(sr)
             End Using
             For Each i In xd.<Config>.<Entry>
-                config(i.@player) = i.@name
+                config(i.@name) = i.@value
             Next
+        Else
+            config("initialMoney") = 0
+            config("disableBank") = False
         End If
         Console.WriteLine("Starting server...")
         Dim server As New PluginServiceServer
@@ -50,25 +55,74 @@ Module Module1
         Console.WriteLine("Preparing saving timer...")
         timer.Interval = 1000 * 60 * 5
         AddHandler timer.Elapsed, Sub(sender, e)
-
+                                      SaveConfigs()
                                   End Sub
+        timer.Start()
         Console.WriteLine("Done! You can start PocketMine-MP!")
         While True
             Dim command = Console.ReadLine
-
+            Try
+                Dim splitted = command.Split(" ")
+                commands(splitted.First)(splitted.Skip(1).ToArray)
+            Catch ex As Exception
+                Tools.PrintException(ex)
+            End Try
         End While
     End Sub
     Function SaveConfigs() As Boolean
-        SyncLock money
-            Dim moneyXml As XDocument = XDocument.Parse("<Money></Money>")
-            For Each i In money
-                Dim node = <Player player="" value=""/>
-                node.@player = i.Key
-                node.@value = i.Value
-                moneyXml.Root.Add(node)
-            Next
-        End SyncLock
-
+        Dim result = True
+        Try
+            SyncLock money
+                Dim moneyXml As XDocument = XDocument.Parse("<Money></Money>")
+                For Each i In money
+                    Dim node = <Player player="" value=""/>
+                    node.@player = i.Key
+                    node.@value = i.Value
+                    moneyXml.Root.Add(node)
+                Next
+                Using sw As New StreamWriter(New GZipStream(New FileStream("money.dat", FileMode.Create), CompressionMode.Compress))
+                    moneyXml.Save(sw)
+                End Using
+            End SyncLock
+        Catch ex As Exception
+            Tools.PrintExceptionD(ex)
+            result = False
+        End Try
+        Try
+            SyncLock bank
+                Dim bankXml As XDocument = XDocument.Parse("<Bank></Bank>")
+                For Each i In bank
+                    Dim node = <Player player="" value=""/>
+                    node.@player = i.Key
+                    node.@value = i.Value
+                    bankXml.Root.Add(node)
+                Next
+                Using sw As New StreamWriter(New GZipStream(New FileStream("bank.dat", FileMode.Create), CompressionMode.Compress))
+                    bankXml.Save(sw)
+                End Using
+            End SyncLock
+        Catch ex As Exception
+            Tools.PrintExceptionD(ex)
+            result = False
+        End Try
+        Try
+            SyncLock config
+                Dim configXml As XDocument = XDocument.Parse("<Config></Config>")
+                For Each i In config
+                    Dim node = <Entry name="" value=""/>
+                    node.@name = i.Key
+                    node.@value = i.Value
+                    configXml.Root.Add(node)
+                Next
+                Using sw As New StreamWriter(New FileStream("config.xml", FileMode.Create))
+                    configXml.Save(sw)
+                End Using
+            End SyncLock
+        Catch ex As Exception
+            Tools.PrintExceptionD(ex)
+            result = False
+        End Try
+        Return result
     End Function
     Class PluginServiceServer
         Inherits HttpServer
