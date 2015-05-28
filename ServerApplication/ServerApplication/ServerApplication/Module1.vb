@@ -47,12 +47,29 @@ Module Module1
         server.Ports.Clear()
         server.Ports.Add(20200)
         server.StartServer()
+        Console.WriteLine("Preparing saving timer...")
+        timer.Interval = 1000 * 60 * 5
+        AddHandler timer.Elapsed, Sub(sender, e)
+
+                                  End Sub
         Console.WriteLine("Done! You can start PocketMine-MP!")
         While True
             Dim command = Console.ReadLine
 
         End While
     End Sub
+    Function SaveConfigs() As Boolean
+        SyncLock money
+            Dim moneyXml As XDocument = XDocument.Parse("<Money></Money>")
+            For Each i In money
+                Dim node = <Player player="" value=""/>
+                node.@player = i.Key
+                node.@value = i.Value
+                moneyXml.Root.Add(node)
+            Next
+        End SyncLock
+
+    End Function
     Class PluginServiceServer
         Inherits HttpServer
         Public Overrides Sub OnRespose(sender As Object, e As HttpServer.OnResponseEventArgs)
