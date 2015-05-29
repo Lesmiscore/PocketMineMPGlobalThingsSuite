@@ -198,6 +198,22 @@ class EconomyAPI extends PluginBase implements Listener{
 		}
 	}
 
+	private function createConfig(){
+		$this->config = new Config($this->getDataFolder() . "economy.properties", Config::PROPERTIES, yaml_parse($this->readResource("config.yml")));
+		$this->command = new Config($this->getDataFolder() . "command.yml", Config::YAML, yaml_parse($this->readResource("command.yml")));
+	}
+	
+	private function scanResources(){
+		foreach($this->getResources() as $resource){
+			$s = explode(\DIRECTORY_SEPARATOR, $resource);
+			$res = $s[count($s) - 1];
+			if(substr($res, 0, 5) === "lang_"){
+				$this->langRes[substr($res, 5, -5)] = get_object_vars(json_decode($this->readResource($res)));
+			}
+		}
+		$this->langRes["user-define"] = (new Config($this->getDataFolder() . "language.properties", Config::PROPERTIES, $this->langRes["def"]))->getAll();
+	}
+	
 	/**
 	 * @param string $key
 	 * @param mixed $default
