@@ -9,6 +9,7 @@ use pocketmine\utils\TextFormat;
 class APIMain extends PluginBase implements Listener{
 	private $config;
 	private $cSender;
+	private $connection;
 	public function onEnable(){
 		$this->cSender=new ConsoleCommandSender();
 		$this->cSender->sendMessage(TextFormat::GREEN."Loading config...");
@@ -29,7 +30,10 @@ class APIMain extends PluginBase implements Listener{
 						"port"=>20200
 					));
 		}
+		$this->connection=new Connection($this->config,$this);
 		$this->cSender->sendMessage(TextFormat::GREEN."Pinging...");
+		$data=$this->connection->postData("ping",array());
+		
 	}
 	public function onDisable(){
 		
