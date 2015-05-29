@@ -52,4 +52,7 @@ class APIMain extends PluginBase implements Listener{
 		$address=$player->getAddress();
 		$cid=$player->getUniqueId();
 	}
+	public function getConnection(){
+		return $this->connection;
+	}
 }
