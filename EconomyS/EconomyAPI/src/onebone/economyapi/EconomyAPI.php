@@ -77,6 +77,8 @@ class EconomyAPI extends PluginBase implements Listener{
 	 */
 	private $monetaryUnit = "$";
 	
+	private $connection;//need to contact to the server
+	
 	/**
 	 * @var int RET_ERROR_1 Unknown error 1
 	*/
@@ -173,50 +175,8 @@ class EconomyAPI extends PluginBase implements Listener{
 
 		$this->getServer()->getPluginManager()->registerEvents($this, $this);
 		$this->convertData();
-		$moneyConfig = new Config($this->getDataFolder() . "Money.yml", Config::YAML, [
-			"version" => 2,
-			"money" => [],
-		]);
 		
-		if($moneyConfig->get("version")< self::CURRENT_DATABASE_VERSION){
-			$converter = new DataConverter($this->getDataFolder() . "Money.yml");
-			$result = $converter->convertData(self::CURRENT_DATABASE_VERSION);
-			if($result !== false){
-				$this->getLogger()->info("Converted data into new database. Database version : ".self::CURRENT_DATABASE_VERSION);
-			}
-			$moneyConfig = new Config($this->getDataFolder() . "Money.yml", Config::YAML);
-		}
-		$this->money = $moneyConfig->getAll();
-		
-		$this->monetaryUnit = $this->config->get("monetary-unit");
-		
-		$time = $this->config->get("auto-save-interval");
-		if(is_numeric($time)){
-			$interval = $time * 1200;
-			$this->getServer()->getScheduler()->scheduleDelayedRepeatingTask(new SaveTask($this), $interval, $interval);
-			$this->getLogger()->notice("Auto save has been set to interval : ".$time." min(s)");
-		}
-		
-		if($this->config->get("check-update")){
-			try{
-				$this->getLogger()->info("Checking for updates... It may be take some while.");
-
-				$desc = yaml_parse(Utils::getURL("https://raw.githubusercontent.com/onebone/EconomyS/master/EconomyAPI/plugin.yml"));
-				
-				$description = $this->getDescription();
-				if(version_compare($description->getVersion(), $desc["version"]) < 0){
-					$this->getLogger()->warning("New version of EconomyAPI (v".$desc["version"].") has been found. Current version : v".$description->getVersion().". Please update the plugin.");
-				}else{
-					$this->getLogger()->notice("EconomyAPI is currently up-to-date.");
-				}
-				
-				if($desc["author"] !== $description->getAuthors()[0]){
-					$this->getLogger()->warning("You are using the modified version of the plugin. This version could not be supported.");
-				}
-			}catch(\Exception $e){
-				$this->getLogger()->warning("An exception during check-update has been detected.");
-			}
-		}
+		$this->connection=$this->getServer()->getPluginManager()->getPlugin("PMMPConnectionAPI")->getConnection();
 	}
 	
 	private function convertData(){
@@ -236,22 +196,6 @@ class EconomyAPI extends PluginBase implements Listener{
 		if($cnt > 0){
 			$this->getLogger()->info(TextFormat::AQUA."Converted $cnt data(m) into new format");
 		}
-	}
-	
-	private function createConfig(){
-		$this->config = new Config($this->getDataFolder() . "economy.properties", Config::PROPERTIES, yaml_parse($this->readResource("config.yml")));
-		$this->command = new Config($this->getDataFolder() . "command.yml", Config::YAML, yaml_parse($this->readResource("command.yml")));
-	}
-	
-	private function scanResources(){
-		foreach($this->getResources() as $resource){
-			$s = explode(\DIRECTORY_SEPARATOR, $resource);
-			$res = $s[count($s) - 1];
-			if(substr($res, 0, 5) === "lang_"){
-				$this->langRes[substr($res, 5, -5)] = get_object_vars(json_decode($this->readResource($res)));
-			}
-		}
-		$this->langRes["user-define"] = (new Config($this->getDataFolder() . "language.properties", Config::PROPERTIES, $this->langRes["def"]))->getAll();
 	}
 
 	/**
@@ -406,7 +350,7 @@ class EconomyAPI extends PluginBase implements Listener{
 	 * @return array
 	*/
 	public function getAllMoney(){
-		return $this->money;
+		return null;//$this->money; //Why? because the server doesn't support this method.
 	}
 	
 	/**
@@ -458,7 +402,8 @@ class EconomyAPI extends PluginBase implements Listener{
 		}
 		$player = strtolower($player);
 		
-		return isset($this->money["money"][$player]) === true;
+		return $connection->postData("money",array("mode"=>"existAccount",
+													    "player"=>$player)) == "ACCOUNT_EXISTS";
 	}
 
 	/**
@@ -474,14 +419,11 @@ class EconomyAPI extends PluginBase implements Listener{
 		}
 		$player = strtolower($player);
 		
-		if(!isset($this->money["money"][$player])){
-			$this->getServer()->getPluginManager()->callEvent(($ev = new CreateAccountEvent($this, $player, $default_money, "EconomyAPI")));
-			if(!$ev->isCancelled() and $force === false){
-				$this->money["money"][$player] = ($default_money === false ? $this->config->get("default-money") : $default_money);
-				return true;
-			}
+		$this->getServer()->getPluginManager()->callEvent(($ev = new CreateAccountEvent($this, $player, $default_money, "EconomyAPI")));
+		if(!$ev->isCancelled() and $force === false){
+			return $connection->postData("money",array("mode"=>"get",
+													       "player"=>$player)) !== false;
 		}
-		return false;
 	}
 	
 	/**
@@ -495,10 +437,9 @@ class EconomyAPI extends PluginBase implements Listener{
 		}
 		$player = strtolower($player);
 		
-		if(isset($this->money["money"][$player])){
-			$this->money["money"][$player] = null;
-			unset($this->money["money"][$player]);
-			
+		if($this->accountExists($player)){
+			$connection->postData("money",array("mode"=>"deleteAccount",
+												   "player"=>$player));
 			$p = $this->getServer()->getPlayerExact($player);
 			if($p instanceof Player){
 				$p->kick("Your account have been removed.");
@@ -530,10 +471,16 @@ class EconomyAPI extends PluginBase implements Listener{
 		}
 		$player = strtolower($player);
 		
-		if(!isset($this->money["money"][$player])){
+		if(!$this->existsAccount($player)){
 			return false;
 		}
-		return $this->money["money"][$player];
+		$data=$connection->postData("money",array("mode"=>"get",
+														"player"=>$player));
+		if($data===false){
+			return false;
+		}else{
+			return intval($data);
+		}
 	}
 	
 	/**
@@ -577,16 +524,26 @@ class EconomyAPI extends PluginBase implements Listener{
 		$player = strtolower($player);
 		
 		$amount = round($amount, 2);
-		if(isset($this->money["money"][$player])){
+		if($this->existsAccount($player)){
 			$amount = min($this->config->get("max-money"), $amount);
 			$event = new AddMoneyEvent($this, $player, $amount, $issuer);
 			$this->getServer()->getPluginManager()->callEvent($event);
 			if($force === false and $event->isCancelled()){
 				return self::RET_CANCELLED;
 			}
-			$this->money["money"][$player] += $amount;
-			$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $this->money["money"][$player], $issuer));
-			return self::RET_SUCCESS;
+			$data=$connection->postData("money",array("mode"=>"giveMoney",
+														  "value"->$money,
+														  "player"=>$player));
+			if($data===false){
+				return -2;
+			}else if($data=="DENIED_UNFAIR"){
+				return -3;
+			}else if($data=="TRANSACTION_COMPLETE"){
+				$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $this->myMoney($player), $issuer));
+				return self::RET_SUCCESS;
+			}else{
+				return -2;
+			}
 		}else{
 			return self::RET_NOT_FOUND;
 		}
@@ -611,18 +568,25 @@ class EconomyAPI extends PluginBase implements Listener{
 		$player = strtolower($player);
 		
 		$amount = round($amount, 2);
-		if(isset($this->money["money"][$player])){
-			if($this->money["money"][$player] - $amount < 0){
-				return self::RET_INVALID;
-			}
+		if($this->existsAccount($player)){
 			$event = new ReduceMoneyEvent($this, $player, $amount, $issuer);
 			$this->getServer()->getPluginManager()->callEvent($event);
 			if($force === false and $event->isCancelled()){
 				return self::RET_CANCELLED;
 			}
-			$this->money["money"][$player] -= $amount;
-			$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $this->money["money"][$player], $issuer));
-			return self::RET_SUCCESS;
+			$data=$connection->postData("money",array("mode"=>"takeMoney",
+														  "value"->$money,										  
+														  "player"=>$player));
+			if($data===false){
+				return -2;
+			}else if($data=="DENIED_UNFAIR"){
+				return -3;
+			}else if($data=="TRANSACTION_COMPLETE"){
+				$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $this->myMoney($player), $issuer));
+				return self::RET_SUCCESS;
+			}else{
+				return -2;
+			}
 		}else{
 			return self::RET_NOT_FOUND;
 		}
@@ -654,9 +618,17 @@ class EconomyAPI extends PluginBase implements Listener{
 			if($force === false and $ev->isCancelled()){
 				return self::RET_CANCELLED;
 			}
-			$this->money["money"][$player] = $money;
-			$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $this->money["money"][$player], $issuer));
-			return self::RET_SUCCESS;
+			$data=$connection->postData("money",array("mode"=>"takeMoney",
+														  "value"->$money,
+														  "player"=>$player));
+			if($data===false){
+				return -2;
+			}else if($data=="TRANSACTION_COMPLETE"){
+				$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $this->myMoney($player), $issuer));
+				return self::RET_SUCCESS;
+			}else{
+				return -2;
+			}
 		}else{
 			return self::RET_NOT_FOUND;
 		}
@@ -678,9 +650,8 @@ class EconomyAPI extends PluginBase implements Listener{
 	 */
 	public function onLoginEvent(PlayerLoginEvent $event){
 		$username = strtolower($event->getPlayer()->getName());
-		if(!isset($this->money["money"][$username])){
-			$this->getServer()->getPluginManager()->callEvent(($ev = new CreateAccountEvent($this, $username, $this->config->get("default-money"), $this->config->get("default-debt"), null, "EconomyAPI")));
-			$this->money["money"][$username] = round($ev->getDefaultMoney(), 2);
+		if(!$this->existsAccount($username)){
+			$this->getServer()->getPluginManager()->callEvent(($ev = new CreateAccountEvent($this, $username, $this->myMoney($player), 0, null, "EconomyAPI")));
 		}
 		if(!isset($this->playerLang[$username])){
 			$this->setLang($this->config->get("default-lang"), $username);
@@ -691,6 +662,6 @@ class EconomyAPI extends PluginBase implements Listener{
 	 * @return string
 	*/
 	public function __toString(){
-		return "EconomyAPI (total accounts: " . count($this->money) . ")";
+		return "EconomyAPI (for online management)";
 	}
 }

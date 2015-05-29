@@ -34,6 +34,10 @@ class TopMoneyCommand extends EconomyAPICommand{
 	}
 	
 	public function exec(CommandSender $sender, array $params){
+		{
+			$sender->sendMessage("Sorry, this command is now not working. Please wait for it is supported.");
+			return false;
+		}
 		$page = array_shift($params);
 		
 		$moneyData = $this->getPlugin()->getAllMoney();

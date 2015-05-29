@@ -59,18 +59,21 @@ class GiveMoneyCommand extends EconomyAPICommand{
 		$result = $this->getPlugin()->addMoney($player, $amount);
 		$output = "";
 		switch($result){
+			case -3: // DENIED (Server not allows)
+				$output .= "Your request have been denied: Server says it is unfair!";
+				break;
 			case -2: // CANCELLED
-			$output .= "Your request have been cancelled";
-			break;
+				$output .= "Your request have been cancelled";
+				break;
 			case -1: // NOT_FOUND
-			$output .= $this->getPlugin()->getMessage("player-never-connected", $sender->getName(), array($player, "%2", "%3", "%4"));
-			break;
+				$output .= $this->getPlugin()->getMessage("player-never-connected", $sender->getName(), array($player, "%2", "%3", "%4"));
+				break;
 			// INVALID is already checked
 			case 1: // SUCCESS
-			$output .= $this->getPlugin()->getMessage("givemoney-gave-money", $sender->getName(), array($amount, $player, "%3", "%4"));
-			if($p instanceof Player){
-				$p->sendMessage($this->getPlugin()->getMessage("givemoney-money-given", $sender->getName(), array($amount, "%2", "%3", "%4")));
-			}
+				$output .= $this->getPlugin()->getMessage("givemoney-gave-money", $sender->getName(), array($amount, $player, "%3", "%4"));
+				if($p instanceof Player){
+					$p->sendMessage($this->getPlugin()->getMessage("givemoney-money-given", $sender->getName(), array($amount, "%2", "%3", "%4")));
+				}
 			break;
 		}
 		$sender->sendMessage($output);

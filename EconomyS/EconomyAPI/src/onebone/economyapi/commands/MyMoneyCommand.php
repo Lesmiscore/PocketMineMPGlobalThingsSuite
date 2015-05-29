@@ -35,6 +35,10 @@ class MyMoneyCommand extends EconomyAPICommand implements InGameCommand{
 	public function exec(CommandSender $sender, array $args){
 		$username = $sender->getName();
 		$result = $this->getPlugin()->myMoney($username);
+		if($result===false){
+			$sender->sendMessage("Error in connection!");
+			return false;
+		}
 		$sender->sendMessage($this->getPlugin()->getMessage("mymoney-mymoney", $sender->getName(), array($result, "%2", "%3", "%4")));
 		return true;
 	}

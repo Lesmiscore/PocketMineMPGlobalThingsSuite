@@ -84,6 +84,7 @@ Module Module1
                                  Else
                                      config("initialMoney") = 0
                                      config("disableBank") = False
+                                     config("acceptGiveMoney") = False
                                  End If
                              End Sub
         commands("config") = Sub(args)
@@ -181,8 +182,8 @@ Module Module1
                                 If money.ContainsKey(player) Then
                                     writer.WriteLine(money(player).ToString)
                                 Else
-                                    money(player) = 0
-                                    writer.WriteLine("0")
+                                    money(player) = Integer.Parse(config("initialMoney"))
+                                    writer.WriteLine(config("initialMoney"))
                                 End If
                             Case "set"
                                 Dim transactionComplete = False
@@ -190,6 +191,7 @@ Module Module1
                                 Try
                                     transactionMoney = Integer.Parse(query("value"))
                                     If transactionMoney >= 0 Then
+                                        money(player) = transactionMoney
                                         transactionComplete = True
                                     End If
                                 Catch ex As FormatException
@@ -198,12 +200,75 @@ Module Module1
                                     writer.WriteLine("OVERFLOW_ERROR")
                                 Finally
                                     If transactionComplete Then
-                                        money(player) = transactionMoney
                                         writer.WriteLine("TRANSACTION_COMPLETE")
                                     Else
                                         writer.WriteLine("TRANSACTION_ERROR")
                                     End If
                                 End Try
+                            Case "givemoney"
+                                If Not StrToBool(config("acceptGiveMoney")) Then
+                                    writer.WriteLine("DENIED_UNFAIR")
+                                    Return
+                                End If
+                                Dim transactionComplete = False
+                                Dim transactionMoney = -1
+                                Try
+                                    transactionMoney = Integer.Parse(query("value"))
+                                    money(player) += transactionMoney
+                                    transactionComplete = True
+                                Catch ex As FormatException
+                                    writer.WriteLine("FORMAT_ERROR")
+                                Catch ex As OverflowException
+                                    writer.WriteLine("OVERFLOW_ERROR")
+                                Finally
+                                    If transactionComplete Then
+                                        writer.WriteLine("TRANSACTION_COMPLETE")
+                                    Else
+                                        writer.WriteLine("TRANSACTION_ERROR")
+                                    End If
+                                End Try
+                            Case "takemoney"
+                                If Not StrToBool(config("acceptGiveMoney")) Then
+                                    writer.WriteLine("DENIED_UNFAIR")
+                                    Return
+                                End If
+                                Dim transactionComplete = False
+                                Dim transactionMoney = -1
+                                Try
+                                    transactionMoney = Integer.Parse(query("value"))
+                                    money(player) -= transactionMoney
+                                    transactionComplete = True
+                                Catch ex As FormatException
+                                    writer.WriteLine("FORMAT_ERROR")
+                                Catch ex As OverflowException
+                                    writer.WriteLine("OVERFLOW_ERROR")
+                                Finally
+                                    If transactionComplete Then
+                                        writer.WriteLine("TRANSACTION_COMPLETE")
+                                    Else
+                                        writer.WriteLine("TRANSACTION_ERROR")
+                                    End If
+                                End Try
+                            Case "existAccount"
+                                If money.ContainsKey(player) Then
+                                    writer.WriteLine("ACCOUNT_EXISTS")
+                                Else
+                                    writer.WriteLine("ACCOUNT_NOT_EXISTS")
+                                End If
+                            Case "deleteAccount"
+                                If money.ContainsKey(player) Then
+                                    Try
+                                        If money.Remove(player) Then
+                                            writer.WriteLine("ACCOUNT_DELETE_COMPLETE")
+                                        Else
+                                            writer.WriteLine("ACCOUNT_DELETE_ERROR")
+                                        End If
+                                    Catch ex As Exception
+                                        writer.WriteLine("ACCOUNT_DELETE_ERROR")
+                                    End Try
+                                Else
+                                    writer.WriteLine("ACCOUNT_NOT_EXISTS")
+                                End If
                         End Select
                     End SyncLock
                 Case "bank"
@@ -268,6 +333,13 @@ Module Module1
                                                                     query("cid") & "|" &
                                                                     e.Request.RemoteEndPoint.Address.ToString}, Encoding.UTF8)
                         End If
+                    End SyncLock
+                Case "config"
+                    SyncLock config
+                        Select Case query("mode")
+                            Case "get"
+                                writer.WriteLine(config(query("key")))
+                        End Select
                     End SyncLock
             End Select
         End Sub

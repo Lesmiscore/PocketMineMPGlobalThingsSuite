@@ -1,7 +1,8 @@
 name: EconomyAPI
 main: onebone\economyapi\EconomyAPI
 version: "2.0.7"
-author: onebone
+author: nao20010128nao
+depend: [PMMPConnectionAPI]
 api:
 - 1.0.0
 - 1.1.0
