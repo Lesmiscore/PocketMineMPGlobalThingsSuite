@@ -10,8 +10,8 @@ Module Module1
     Dim bank As New Dictionary(Of String, Long)
     Dim config As New Dictionary(Of String, String)
     Dim commands As New Dictionary(Of String, Action(Of String()))
-    Dim players As New List(Of String)
     Dim timer As New Timer
+    Dim server As PluginServiceServer
     Sub Main()
         Console.WriteLine("Global Data Sync Server for PocketMine-MP")
         Console.WriteLine("Loading money.dat")
@@ -48,7 +48,7 @@ Module Module1
             config("disableBank") = False
         End If
         Console.WriteLine("Starting server...")
-        Dim server As New PluginServiceServer
+        server = New PluginServiceServer
         server.Ports.Clear()
         server.Ports.Add(20200)
         server.StartServer()
@@ -59,6 +59,40 @@ Module Module1
                                   End Sub
         timer.Start()
         Console.WriteLine("Done! You can start PocketMine-MP!")
+        commands("stop") = Sub(args)
+                               Console.WriteLine("Stopping application...")
+                               Console.WriteLine("Stopping server...")
+                               server.StopServer()
+                               Console.WriteLine("Stopping timer...")
+                               timer.Stop()
+                               Console.WriteLine("Saving files...")
+                               SaveConfigs()
+                               Console.WriteLine("Stopping process...")
+                               Process.GetCurrentProcess.Kill()
+                           End Sub
+        commands("reload") = Sub(args)
+                                 Console.WriteLine("Reloading config...")
+                                 If File.Exists("config.xml") Then
+                                     Dim xd As XDocument
+                                     Using sr As New StreamReader(New FileStream("config.xml", FileMode.Open), Encoding.UTF8)
+                                         xd = XDocument.Load(sr)
+                                     End Using
+                                     For Each i In xd.<Config>.<Entry>
+                                         config(i.@name) = i.@value
+                                     Next
+                                 Else
+                                     config("initialMoney") = 0
+                                     config("disableBank") = False
+                                 End If
+                             End Sub
+        commands("config") = Sub(args)
+                                 If args.Length <> 2 Then
+                                     Console.WriteLine("Usage: config <NAME> <VALUE>")
+                                 End If
+                             End Sub
+        'commands("stop") = Sub(args)
+
+        '                   End Sub
         While True
             Dim command = Console.ReadLine
             Try
