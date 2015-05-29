@@ -167,7 +167,7 @@ Module Module1
                         End Select
                     End SyncLock
                 Case "bank"
-                    If StrToBool(config("disableBank")) Then
+                    If Not StrToBool(config("disableBank")) Then
                         writer.WriteLine("BANK_DISABLED")
                         Return
                     End If
