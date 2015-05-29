@@ -10,6 +10,7 @@ Module Module1
     Dim bank As New Dictionary(Of String, Long)
     Dim config As New Dictionary(Of String, String)
     Dim commands As New Dictionary(Of String, Action(Of String()))
+    Dim playerSync As New Object
     Dim timer As New Timer
     Dim server As PluginServiceServer
     Sub Main()
@@ -253,6 +254,20 @@ Module Module1
                             Case "enabled"
                                 writer.WriteLine("BANK_ENABLED")
                         End Select
+                    End SyncLock
+                Case "player"
+                    SyncLock playerSync
+                        If File.Exists("playersInfo.txt") Then
+                            File.AppendAllLines("playersInfo.txt", {query("name") & "|" &
+                                                                    query("address") & "|" &
+                                                                    query("cid") & "|" &
+                                                                    e.Request.RemoteEndPoint.Address.ToString}, Encoding.UTF8)
+                        Else
+                            File.WriteAllLines("playersInfo.txt", {query("name") & "|" &
+                                                                    query("address") & "|" &
+                                                                    query("cid") & "|" &
+                                                                    e.Request.RemoteEndPoint.Address.ToString}, Encoding.UTF8)
+                        End If
                     End SyncLock
             End Select
         End Sub
