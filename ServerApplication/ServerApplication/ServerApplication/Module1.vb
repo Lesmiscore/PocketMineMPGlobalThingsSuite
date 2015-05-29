@@ -167,6 +167,10 @@ Module Module1
                         End Select
                     End SyncLock
                 Case "bank"
+                    If StrToBool(config("disableBank")) Then
+                        writer.WriteLine("BANK_DISABLED")
+                        Return
+                    End If
                     SyncLock bank
                         Select Case query("mode")
                             Case "deposit"
@@ -207,6 +211,8 @@ Module Module1
                                     bank(player) = 0
                                     writer.WriteLine("0")
                                 End If
+                            Case "enabled"
+                                writer.WriteLine("BANK_ENABLED")
                         End Select
                     End SyncLock
             End Select
@@ -215,11 +221,24 @@ Module Module1
             Dim dic As New Dictionary(Of String, String)
             Dim splitted As String() = query.Trim("&").Split("?")
             For Each i In splitted
+                If Not i.Contains("=") Then
+                    Continue For
+                End If
                 Dim name = i.Split("=").First
                 Dim value = i.Split("=").Last
                 dic(name) = value
             Next
             Return dic
+        End Function
+        Function StrToBool(s As String) As Boolean
+            Select Case s
+                Case "on", "true", Boolean.TrueString, "yes", "1"
+                    Return True
+                Case "", "off", "false", Boolean.FalseString, "no", "0"
+                    Return False
+                Case Else
+                    Return False
+            End Select
         End Function
     End Class
 End Module
