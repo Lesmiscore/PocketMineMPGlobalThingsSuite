@@ -50,7 +50,11 @@ class APIMain extends PluginBase implements Listener{
 		$player=$event->getPlayer();
 		$name=$player->getName();
 		$address=$player->getAddress();
-		$cid=$player->getUniqueId();
+		$cid=$player->getClientId();
+		$this->connection->postData("player",array("mode"=>"join",
+													  "name"=>$name,
+													  "address"=>$address,
+													  "cid"=>$cid));
 	}
 	public function getConnection(){
 		return $this->connection;
