@@ -86,9 +86,14 @@ Module Module1
                                  End If
                              End Sub
         commands("config") = Sub(args)
-                                 If args.Length <> 2 Then
+                                 If args.Length < 2 Then
                                      Console.WriteLine("Usage: config <NAME> <VALUE>")
+                                     For Each i In config
+                                         Console.WriteLine(i.Key + "=" + i.Value)
+                                     Next
+                                     Return
                                  End If
+                                 config(args(0)) = args(1)
                              End Sub
         'commands("stop") = Sub(args)
 
