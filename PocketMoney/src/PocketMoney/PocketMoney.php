@@ -318,7 +318,7 @@ class PocketMoney extends PluginBase implements Listener
     public function getNumberOfAccount()
     {
     	if(($res=
-        	$connection->postData("money",array("mode"=>"unhide",
+        	$connection->postDataB("money",array("mode"=>"unhide",
 												   "player"=>$account)))!==false){
 			return count($res);
 		}else{
