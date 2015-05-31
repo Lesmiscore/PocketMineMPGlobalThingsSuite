@@ -69,7 +69,7 @@ class PocketMoney extends PluginBase implements Listener
     {
         if (!$this->isRegistered($account)) return false;
         $data=$connection->postData("money",array("mode"=>"get",
-													  "player"=>$player));
+													  "player"=>$account));
 		if($data===false){
 			return false;
 		}else{
@@ -103,8 +103,13 @@ class PocketMoney extends PluginBase implements Listener
     public function getHide($account)
     {
         if (!$this->isRegistered($account)) return false;
-        return false;//this method is not defined on the server
-        return $this->users->get($account)['hide'];
+        if(($res=
+        	$connection->postData("money",array("mode"=>"hidden",
+												   "player"=>$player)))!==false and $res=="ACCOUNT_HIDDEN"){
+			return true;
+		}else{
+			return false;
+		}	
     }
 
     /**
@@ -186,9 +191,10 @@ class PocketMoney extends PluginBase implements Listener
      * @param string $account
      * @param int $amount
      * @param bool $callEvent
+     * @param bool $needForce
      * @return bool
      */
-    public function grantMoney($account, $amount, $callEvent = true)
+    public function grantMoney($account, $amount, $callEvent = true, $needForce = false)
     {
         if (!$this->isRegistered($account)) return false;
         $targetMoney = $this->getMoney($account);
@@ -196,6 +202,7 @@ class PocketMoney extends PluginBase implements Listener
         if(($res=
         	$connection->postData("money",array("mode"=>"giveMoney",
 												   "value"=>$amount,
+												   "force"=>$needForce,
 											       "player"=>$player)))!==false and $res=="TRANSACTION_COMPLETE"){
         	if ($callEvent) {
         		$this->getServer()->getPluginManager()->callEvent(
@@ -222,10 +229,19 @@ class PocketMoney extends PluginBase implements Listener
     public function setAccountHideMode($account, $hide)
     {
         if (!$this->isRegistered($account)) return false;
-        return false;//this method is not defined on the server
-        $this->users->set($account, array_merge($this->users->get($account), array('hide' => $hide)));
-        $this->users->save();
-        return true;
+        $mode="";
+        if($hide){
+        	$mode="hide";
+        }else{
+        	$mode="unhide";
+        }
+        if(($res=
+        	$connection->postData("money",array("mode"=>$mode,
+												   "player"=>$account)))!==false and $res=="TRANSACTION_COMPLETE"){
+			return true;
+		}else{
+			return false;
+		}
     }
 
     /**
@@ -240,11 +256,13 @@ class PocketMoney extends PluginBase implements Listener
     public function switchHideMode($account)
     {
         if (!$this->isRegistered($account)) return false;
-        return false;//this method is not defined on the server
-        $hide = $this->users->get($account)['hide'];
-        $this->users->set($account, array_merge($this->users->get($account), array('hide' => !$hide)));
-        $this->users->save();
-        return true;
+        if(($res=
+        	$connection->postData("money",array("mode"=>"switchHidden",
+												   "player"=>$account)))!==false and $res=="TRANSACTION_COMPLETE"){
+			return true;
+		}else{
+			return false;
+		}
     }
 
     /**
@@ -260,10 +278,13 @@ class PocketMoney extends PluginBase implements Listener
     {
         if (!$this->isRegistered($account)) return false;
         if ($this->getType($account) !== PlayerType::NonPlayer) return false;
-        return false;//this method is not defined on the server
-        $this->users->set($account, array_merge($this->users->get($account), array('hide' => true)));
-        $this->users->save();
-        return true;
+        if(($res=
+        	$connection->postData("money",array("mode"=>"hide",
+												   "player"=>$account)))!==false and $res=="TRANSACTION_COMPLETE"){
+			return true;
+		}else{
+			return false;
+		}
     }
 
     /**
@@ -278,10 +299,13 @@ class PocketMoney extends PluginBase implements Listener
     public function unhideAccount($account)
     {
         if (!$this->isRegistered($account)) return false;
-        return false;//this method is not defined on the server
-        $this->users->set($account, array_merge($this->users->get($account), array('hide' => false)));
-        $this->users->save();
-        return true;
+        if(($res=
+        	$connection->postData("money",array("mode"=>"unhide",
+												   "player"=>$account)))!==false and $res=="TRANSACTION_COMPLETE"){
+			return true;
+		}else{
+			return false;
+		}
     }
 
     /**
@@ -293,8 +317,13 @@ class PocketMoney extends PluginBase implements Listener
      */
     public function getNumberOfAccount()
     {
-    	return -1;//this method is not defined on the server
-        return count($this->users->getAll());
+    	if(($res=
+        	$connection->postData("money",array("mode"=>"unhide",
+												   "player"=>$account)))!==false){
+			return count($res);
+		}else{
+			return 0;
+		}
     }
 
     /**
@@ -307,8 +336,8 @@ class PocketMoney extends PluginBase implements Listener
     public function getTotalMoney()
     {
         $sum = 0;
-        foreach ($this->users->getAll() as $account) {
-            $sum += $account['money'];
+        foreach ($this->getAccounts() as $account) {
+            $sum += $this->getMoney($account);
         }
         return $sum;
     }
@@ -342,9 +371,12 @@ class PocketMoney extends PluginBase implements Listener
                 //return new SimpleError(SimpleError::InvalidAmount, "Invalid amount");
             }
         }
-        $this->users->set($account, array("money" => $money, "type" => $type, "hide" => $hide));
-        $this->users->save();
-        return true;
+        if($res=$connection->postData("money",array("mode"=>"createAccount",
+												   		"player"=>$account)))!==false and $res=="TRANSACTION_COMPLETE")){
+			return true;
+        }else{
+        	return false;
+        }
     }
 
     /**
@@ -360,9 +392,12 @@ class PocketMoney extends PluginBase implements Listener
     {
         if (!$this->isRegistered($account)) return false;
         //return new SimpleError(SimpleError::AccountNotExist, "\"$account\" does not exist");
-        $this->users->remove($account);
-        $this->users->save();
-        return true;
+        if($res=$connection->postData("money",array("mode"=>"deleteAccount",
+												   		"player"=>$account)))!==false and $res=="TRANSACTION_COMPLETE")){
+			return true;
+        }else{
+        	return false;
+        }
     }
 
     /**
@@ -376,13 +411,13 @@ class PocketMoney extends PluginBase implements Listener
      */
     public function getRanking($amount, $includeHideAccount = false)
     {
-        $result = array();
+    	$result = array();
         $temp = array();
-        foreach ($this->users->getAll() as $name => $value) {
+        foreach ($this->getAccounts() as $name) {
             if ($includeHideAccount) {
-                $temp[$name] = $value['money'];
-            } elseif (!$value['hide']) {
-                $temp[$name] = $value['money'];
+                $temp[$name] = $this->getMoney($name);
+            } elseif ($this->getHide($name)) {
+                $temp[$name] = $this->getMoney($name);
             }
         }
         arsort($temp);
@@ -398,6 +433,11 @@ class PocketMoney extends PluginBase implements Listener
         return $result;
     }
 
+    public function getAccounts(){
+    	return $connection->postDataB("money",array("mode"=>"accounts",
+														"player"=>$account));
+    }
+    
     // API ->
 
 

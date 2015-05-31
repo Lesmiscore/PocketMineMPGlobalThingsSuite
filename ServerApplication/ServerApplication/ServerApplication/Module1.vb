@@ -7,6 +7,7 @@ Imports AnythingTools
 
 Module Module1
     Dim money As New Dictionary(Of String, Integer)
+    Dim moneyHidden As New Dictionary(Of String, Object)
     Dim bank As New Dictionary(Of String, Long)
     Dim config As New Dictionary(Of String, String)
     Dim commands As New Dictionary(Of String, Action(Of String()))
@@ -24,6 +25,18 @@ Module Module1
             For Each i In xd.<Money>.<Player>
                 money(i.@player) = Integer.Parse(i.@value)
             Next
+        End If
+        Console.WriteLine("Loading mhid.dat")
+        If File.Exists("mhid.dat") Then
+            Dim s As String = ""
+            Using sr As New StreamReader(New GZipStream(New FileStream("mhid.dat", FileMode.Open), CompressionMode.Decompress), Encoding.UTF32)
+                s = sr.ReadToEnd
+            End Using
+            Using sr As New StringReader(s)
+                While sr.Peek <> -1
+                    moneyHidden(sr.ReadLine) = Nothing
+                End While
+            End Using
         End If
         Console.WriteLine("Loading bank.dat")
         If File.Exists("bank.dat") Then
@@ -163,6 +176,18 @@ Module Module1
             Tools.PrintExceptionD(ex)
             result = False
         End Try
+        Try
+            SyncLock moneyHidden
+                Using sw As New StreamWriter(New GZipStream(New FileStream("mhid.dat", FileMode.Create), CompressionMode.Compress))
+                    For Each i In moneyHidden.Keys
+                        sw.WriteLine(i)
+                    Next
+                End Using
+            End SyncLock
+        Catch ex As Exception
+            Tools.PrintExceptionD(ex)
+            result = False
+        End Try
         Return result
     End Function
     Class PluginServiceServer
@@ -255,6 +280,13 @@ Module Module1
                                 Else
                                     writer.WriteLine("ACCOUNT_NOT_EXISTS")
                                 End If
+                            Case "createAccount"
+                                If Not money.ContainsKey(player) Then
+                                    money(player) = Integer.Parse(config("initialMoney"))
+                                    writer.WriteLine("TRANSACTION_COMPLETE")
+                                Else
+                                    writer.WriteLine("ACCOUNT_ALREADY_EXISTS")
+                                End If
                             Case "deleteAccount"
                                 If money.ContainsKey(player) Then
                                     Try
@@ -273,6 +305,36 @@ Module Module1
                                 For Each i In money.Keys.Distinct
                                     writer.WriteLine(i)
                                 Next
+                            Case "hidden"
+                                SyncLock moneyHidden
+                                    If moneyHidden.ContainsKey(query("player")) Then
+                                        writer.WriteLine("ACCOUNT_HIDDEN")
+                                    Else
+                                        writer.WriteLine("ACCOUNT_PUBLIC")
+                                    End If
+                                End SyncLock
+                            Case "hide"
+                                SyncLock moneyHidden
+                                    moneyHidden(query("player")) = Nothing
+                                    writer.WriteLine("TRANSACTION_COMPLETE")
+                                End SyncLock
+                            Case "unhide"
+                                SyncLock moneyHidden
+                                    If moneyHidden.Remove(query("player")) Then
+                                        writer.WriteLine("TRANSACTION_COMPLETE")
+                                    Else
+                                        writer.WriteLine("TRANSACTION_ERROR")
+                                    End If
+                                End SyncLock
+                            Case "switchHidden"
+                                SyncLock moneyHidden
+                                    If moneyHidden.ContainsKey(query("player")) Then
+                                        moneyHidden.Remove(query("player"))
+                                    Else
+                                        moneyHidden(query("player")) = Nothing
+                                    End If
+                                    writer.WriteLine("TRANSACTION_COMPLETE")
+                                End SyncLock
                         End Select
                     End SyncLock
                 Case "bank"
