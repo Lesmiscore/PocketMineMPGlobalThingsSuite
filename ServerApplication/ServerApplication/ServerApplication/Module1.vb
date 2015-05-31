@@ -113,6 +113,7 @@ Module Module1
         commands("save-all") = Sub(args)
                                    Console.WriteLine("Saving all...")
                                    SaveConfigs()
+                                   Console.WriteLine("Saving complete!")
                                End Sub
         'commands("stop") = Sub(args)
 
