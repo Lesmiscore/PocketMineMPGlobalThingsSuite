@@ -110,6 +110,10 @@ Module Module1
                                  End If
                                  config(args(0)) = args(1)
                              End Sub
+        commands("save-all") = Sub(args)
+                                   Console.WriteLine("Saving all...")
+                                   SaveConfigs()
+                               End Sub
         'commands("stop") = Sub(args)
 
         '                   End Sub
