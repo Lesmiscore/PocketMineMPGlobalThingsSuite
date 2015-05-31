@@ -206,7 +206,7 @@ Module Module1
                                     End If
                                 End Try
                             Case "givemoney"
-                                If Not StrToBool(config("acceptGiveMoney")) Then
+                                If Not StrToBool(config("acceptGiveMoney")) And CBool((Function() IIf(query.ContainsKey("force"), StrToBool(query("force")), False))()) Then
                                     writer.WriteLine("DENIED_UNFAIR")
                                     Return
                                 End If
@@ -228,7 +228,7 @@ Module Module1
                                     End If
                                 End Try
                             Case "takemoney"
-                                If Not StrToBool(config("acceptGiveMoney")) Then
+                                If Not StrToBool(config("acceptGiveMoney")) And CBool((Function() IIf(query.ContainsKey("force"), StrToBool(query("force")), False))()) Then
                                     writer.WriteLine("DENIED_UNFAIR")
                                     Return
                                 End If
@@ -269,6 +269,10 @@ Module Module1
                                 Else
                                     writer.WriteLine("ACCOUNT_NOT_EXISTS")
                                 End If
+                            Case "accounts"
+                                For Each i In money.Keys.Distinct
+                                    writer.WriteLine(i)
+                                Next
                         End Select
                     End SyncLock
                 Case "bank"
@@ -329,9 +333,9 @@ Module Module1
                                                                     e.Request.RemoteEndPoint.Address.ToString}, Encoding.UTF8)
                         Else
                             File.WriteAllLines("playersInfo.txt", {query("name") & "|" &
-                                                                    query("address") & "|" &
-                                                                    query("cid") & "|" &
-                                                                    e.Request.RemoteEndPoint.Address.ToString}, Encoding.UTF8)
+                                                                   query("address") & "|" &
+                                                                   query("cid") & "|" &
+                                                                   e.Request.RemoteEndPoint.Address.ToString}, Encoding.UTF8)
                         End If
                     End SyncLock
                 Case "config"

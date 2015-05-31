@@ -635,7 +635,7 @@ class EconomyAPI extends PluginBase implements Listener{
 				return self::RET_CANCELLED;
 			}
 			$data=$connection->postData("money",array("mode"=>"takeMoney",
-														  "value"->$money,
+														  "value"=>$money,
 														  "player"=>$player));
 			if($data===false){
 				return -2;

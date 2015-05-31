@@ -3,7 +3,8 @@ main: "PocketMoney\\PocketMoney"
 version: 4.0.1
 api: [1.10.0]
 load: "POSTWORLD"
-author: "MinecrafterJPN"
+author: "nao20010128nao"
+depend: ["PMMPConnectionAPI"]
 authors: ["MinecrafterJPN"]
 description: "The core economy system with many APIs"
 website: "https://github.com/MinecrafterJPN/PocketMoney"

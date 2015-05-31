@@ -16,6 +16,18 @@ class Connection{
 		}
 		return rtrim($resp[0]);
 	}
+	public function postDataB($dir,array $values){
+		$url=$this->generateUrl($dir,$values);
+		$resp=file($url);
+		if($resp===false){
+			return false;
+		}
+		$result=array();
+		foreach($resp as $line){
+			$result=array_merge($result,array(rtrim($line)));
+		}
+		return $result;
+	}
 	private function generateUrl($dir,array $values){
 		$url="http://".$this->config["server"]["ip"].":".$this->config["server"]["port"]."/?".$dir;
 		$keys=array_keys($values);
