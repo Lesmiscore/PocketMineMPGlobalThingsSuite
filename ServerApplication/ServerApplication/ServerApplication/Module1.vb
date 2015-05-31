@@ -337,55 +337,6 @@ Module Module1
                                 End SyncLock
                         End Select
                     End SyncLock
-                Case "bank"
-                    If Not StrToBool(config("disableBank")) Then
-                        writer.WriteLine("BANK_DISABLED")
-                        Return
-                    End If
-                    SyncLock bank
-                        Select Case query("mode")
-                            Case "deposit"
-                                Dim transactionComplete = False
-                                Dim transactionMoney = -1
-                                Try
-                                    transactionMoney = Long.Parse(query("value"))
-                                    If Not bank.ContainsKey(player) Then
-                                        Return
-                                    End If
-                                    If (bank(player) - transactionMoney) < 0 Then
-                                        Return
-                                    End If
-                                    If transactionMoney >= 0 Then
-                                        SyncLock money
-                                            money(player) += transactionMoney
-                                            bank(player) -= transactionMoney
-                                        End SyncLock
-                                        transactionComplete = True
-                                    Else
-                                        transactionComplete = False
-                                    End If
-                                Catch ex As FormatException
-                                    writer.WriteLine("FORMAT_ERROR")
-                                Catch ex As OverflowException
-                                    writer.WriteLine("OVERFLOW_ERROR")
-                                Finally
-                                    If transactionComplete Then
-                                        writer.WriteLine("TRANSACTION_COMPLETE")
-                                    Else
-                                        writer.WriteLine("TRANSACTION_ERROR")
-                                    End If
-                                End Try
-                            Case "get"
-                                If bank.ContainsKey(player) Then
-                                    writer.WriteLine(bank(player).ToString)
-                                Else
-                                    bank(player) = 0
-                                    writer.WriteLine("0")
-                                End If
-                            Case "enabled"
-                                writer.WriteLine("BANK_ENABLED")
-                        End Select
-                    End SyncLock
                 Case "player"
                     SyncLock playerSync
                         If File.Exists("playersInfo.txt") Then
