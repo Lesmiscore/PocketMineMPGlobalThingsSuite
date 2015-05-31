@@ -63,7 +63,8 @@ Module Module1
         End If
         Console.WriteLine("Starting server...")
         server = New PluginServiceServer
-        server.Ports.Clear()
+        server.Ports.Remove(8080)
+        server.Ports.Remove(8081)
         server.Ports.Add(20200)
         server.StartServer()
         Console.WriteLine("Preparing saving timer...")
@@ -139,7 +140,7 @@ Module Module1
                     node.@value = i.Value
                     moneyXml.Root.Add(node)
                 Next
-                Using sw As New StreamWriter(New GZipStream(New FileStream("money.dat", FileMode.Create), CompressionMode.Compress))
+                Using sw As New StreamWriter(New GZipStream(New FileStream("money.dat", FileMode.Create), CompressionMode.Compress), Encoding.UTF32)
                     moneyXml.Save(sw)
                 End Using
             End SyncLock
@@ -156,7 +157,7 @@ Module Module1
                     node.@value = i.Value
                     bankXml.Root.Add(node)
                 Next
-                Using sw As New StreamWriter(New GZipStream(New FileStream("bank.dat", FileMode.Create), CompressionMode.Compress))
+                Using sw As New StreamWriter(New GZipStream(New FileStream("bank.dat", FileMode.Create), CompressionMode.Compress), Encoding.UTF32)
                     bankXml.Save(sw)
                 End Using
             End SyncLock
@@ -183,7 +184,7 @@ Module Module1
         End Try
         Try
             SyncLock moneyHidden
-                Using sw As New StreamWriter(New GZipStream(New FileStream("mhid.dat", FileMode.Create), CompressionMode.Compress))
+                Using sw As New StreamWriter(New GZipStream(New FileStream("mhid.dat", FileMode.Create), CompressionMode.Compress), Encoding.UTF32)
                     For Each i In moneyHidden.Keys
                         sw.WriteLine(i)
                     Next
